@@ -63,7 +63,7 @@ public class JoglExample implements GLEventListener {
     public void init(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
 
-        gl.glClearColor(0.02f, 0.02f, 0.06f, 1.0f);
+        gl.glClearColor(0.06f, 0.06f, 0.06f, 1.0f);
         gl.glEnable(GL2.GL_DEPTH_TEST);
         gl.glDepthFunc(GL2.GL_LEQUAL);
         gl.glEnable(GL2.GL_CULL_FACE);
@@ -197,7 +197,7 @@ public class JoglExample implements GLEventListener {
         long delta = now - lastNanos;
         lastNanos = now;
         double dt = delta / 1_000_000_000.0; // seconds
-        double angularSpeed = (2.0 * Math.PI) / MOON_ORBIT_PERIOD_SEC; // rad/sec
+        double angularSpeed = (1.0 * Math.PI) / MOON_ORBIT_PERIOD_SEC; // rad/sec
         orbitAngleRad = (orbitAngleRad + angularSpeed * dt) % (2.0 * Math.PI);
         earthSpinDeg = (float) ((earthSpinDeg + (360.0 * dt / EARTH_ROTATION_PERIOD_SEC)) % 360.0);
         moonSpinDeg = (float) ((moonSpinDeg + (360.0 * dt / MOON_ROTATION_PERIOD_SEC)) % 360.0);
