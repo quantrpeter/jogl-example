@@ -63,7 +63,7 @@ public class JoglExample implements GLEventListener {
     public void init(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
 
-        gl.glClearColor(0.06f, 0.06f, 0.06f, 1.0f);
+        gl.glClearColor(0.36f, 0.36f, 0.36f, 1.0f);
         gl.glEnable(GL2.GL_DEPTH_TEST);
         gl.glDepthFunc(GL2.GL_LEQUAL);
         gl.glEnable(GL2.GL_CULL_FACE);
@@ -179,7 +179,7 @@ public class JoglExample implements GLEventListener {
 
     private void drawOrbitRing(GL2 gl, float radius) {
         gl.glDisable(GL2.GL_LIGHTING);
-        gl.glColor3f(0.4f, 0.4f, 0.5f);
+        gl.glColor3f(1.0f, 0.4f, 0.5f);
         gl.glBegin(GL2.GL_LINE_LOOP);
         int segments = 128;
         for (int i = 0; i < segments; i++) {
