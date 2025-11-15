@@ -42,6 +42,7 @@ public class DrawEarth implements GLEventListener {
     // Earth parameters
     private static final float EARTH_RADIUS = 3.0f;
     private float earthSpinDeg = 0.0f;
+    private float textureOffsetDeg = 180.0f; // Adjust texture alignment
     private static final double EARTH_ROTATION_PERIOD_SEC = 60.0; // 60 seconds per full rotation
 
     // Animation
@@ -149,13 +150,13 @@ public class DrawEarth implements GLEventListener {
             earthTexture.enable(gl);
             earthTexture.bind(gl);
             
-            // Rotate the texture, not the sphere
+            // Shift the texture horizontally
             gl.glMatrixMode(GL2.GL_TEXTURE);
             gl.glPushMatrix();
             gl.glLoadIdentity();
-            gl.glTranslatef(0f, 0f, 0f);  // Move to center
-            gl.glRotatef(45f, 0.0f, 1.0f, 0.0f); // Rotate texture
-            gl.glTranslatef(0f, 0f, 0f); // Move back
+            // Translate texture (convert degrees to texture units: 0-360 deg -> 0-1 texture coords)
+            float textureShift = textureOffsetDeg / 360.0f;
+            gl.glTranslatef(textureShift, 0.0f, 0.0f);
             gl.glMatrixMode(GL2.GL_MODELVIEW);
         }
 
