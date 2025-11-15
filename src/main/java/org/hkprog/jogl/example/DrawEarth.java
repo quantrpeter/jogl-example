@@ -155,7 +155,7 @@ public class DrawEarth implements GLEventListener {
             gl.glLoadIdentity();
             gl.glTranslatef(0f, 0f, 0f);  // Move to center
             gl.glRotatef(45f, 0.0f, 1.0f, 0.0f); // Rotate texture
-            gl.glTranslatef(-0.5f, -0.5f, 0.0f); // Move back
+            gl.glTranslatef(0f, 0f, 0f); // Move back
             gl.glMatrixMode(GL2.GL_MODELVIEW);
         }
 
