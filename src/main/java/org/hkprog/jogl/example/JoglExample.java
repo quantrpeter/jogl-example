@@ -34,7 +34,7 @@ public class JoglExample implements GLEventListener {
 
     private float rotationXDeg = 20.0f;
     private float rotationYDeg = -30.0f;
-    private float cameraZoom = -20.0f; // move camera back along -Z
+    private float cameraZoom = -10.0f; // move camera back along -Z
 
     private int lastMouseX;
     private int lastMouseY;
@@ -72,9 +72,9 @@ public class JoglExample implements GLEventListener {
         // Lighting
         gl.glEnable(GL2.GL_LIGHTING);
         gl.glEnable(GL2.GL_LIGHT0);
-        float[] lightAmbient = {0.05f, 0.05f, 0.05f, 1.0f};
-        float[] lightDiffuse = {0.9f, 0.9f, 0.9f, 1.0f};
-        float[] lightPosition = {10.0f, 8.0f, 12.0f, 1.0f};
+        float[] lightAmbient = { 0.8f, 0.8f, 0.8f, 1.0f };
+        float[] lightDiffuse = { 0.9f, 0.9f, 0.9f, 1.0f };
+        float[] lightPosition = { 10.0f, 8.0f, 12.0f, 1.0f };
         gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_AMBIENT, lightAmbient, 0);
         gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_DIFFUSE, lightDiffuse, 0);
         gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_POSITION, lightPosition, 0);
@@ -116,43 +116,45 @@ public class JoglExample implements GLEventListener {
 
         // Draw Earth at origin
         gl.glPushMatrix();
-        gl.glRotatef(23.5f, 0.0f, 0.0f, 1.0f); // axial tilt
-        gl.glRotatef(earthSpinDeg, 0.0f, 1.0f, 0.0f);
-        if (earthTexture != null) {
-            setMaterial(gl, new float[]{1.0f, 1.0f, 1.0f, 1.0f});
-            earthTexture.enable(gl);
-            earthTexture.bind(gl);
-        } else {
-            setMaterial(gl, new float[]{0.1f, 0.2f, 0.8f, 1.0f});
-        }
+        // gl.glRotatef(23.5f, 0.0f, 0.0f, 1.0f); // axial tilt (visual only)
+        // gl.glRotatef(earthSpinDeg, 0.0f, 1.0f, 0.0f);
+        setMaterial(gl, new float[] { 1.0f, 1.0f, 1.0f, 1.0f });
+
+        earthTexture.enable(gl);
+        earthTexture.bind(gl);
+        gl.glMatrixMode(GL2.GL_TEXTURE);
+        gl.glLoadIdentity();
+
+        // Apply offset (translation in texture space)
+        gl.glTranslatef(0, 0, 0.0f);
+
+        gl.glTranslatef(0.5f, 0.5f, 0.0f);  // Move to center
+        gl.glRotatef(45f, 0.0f, 0.0f, 1.0f);
+        gl.glTranslatef(-0.5f, -0.5f, 0.0f); // Move back
+
+        gl.glMatrixMode(GL2.GL_MODELVIEW);
         glu.gluSphere(sphereQuadric, EARTH_RADIUS, 48, 32);
-        if (earthTexture != null) {
-            earthTexture.disable(gl);
-        }
+        earthTexture.disable(gl);
+        // Draw grid lines on Earth
+        drawSphereGrid(gl, EARTH_RADIUS + 0.01f); // slightly larger to avoid z-fighting
         gl.glPopMatrix();
 
         // Draw Moon orbiting Earth
-        gl.glPushMatrix();
-        float moonX = (float) (MOON_ORBIT_RADIUS * Math.cos(orbitAngleRad));
-        float moonZ = (float) (MOON_ORBIT_RADIUS * Math.sin(orbitAngleRad));
-        gl.glTranslatef(moonX, 0.0f, moonZ);
-        gl.glRotatef(moonSpinDeg, 0.0f, 1.0f, 0.0f);
-        if (moonTexture != null) {
-            setMaterial(gl, new float[]{1.0f, 1.0f, 1.0f, 1.0f});
-            moonTexture.enable(gl);
-            moonTexture.bind(gl);
-        } else {
-            setMaterial(gl, new float[]{0.1f, 0.2f, 0.8f, 1.0f});
-        }
+        // gl.glPushMatrix();
+        // float moonX = (float) (MOON_ORBIT_RADIUS * Math.cos(orbitAngleRad));
+        // float moonZ = (float) (MOON_ORBIT_RADIUS * Math.sin(orbitAngleRad));
+        // gl.glTranslatef(moonX, 0.0f, moonZ);
+        // gl.glRotatef(-90.0f, 0.0f, 1.0f, 0.0f); // Adjust texture horizontal alignment
+        // gl.glRotatef(moonSpinDeg, 0.0f, 1.0f, 0.0f);
+        // setMaterial(gl, new float[] { 1.0f, 1.0f, 1.0f, 1.0f });
+        // moonTexture.enable(gl);
+        // moonTexture.bind(gl);
         // glu.gluSphere(sphereQuadric, MOON_RADIUS, 32, 24);
-        glu.gluSphere(sphereQuadric, EARTH_RADIUS, 48, 32);
-        if (moonTexture != null) {
-            moonTexture.disable(gl);
-        }
-        gl.glPopMatrix();
+        // moonTexture.disable(gl);
+        // gl.glPopMatrix();
 
         // Optional: simple orbit ring to visualize path
-        drawOrbitRing(gl, MOON_ORBIT_RADIUS);
+        // drawOrbitRing(gl, MOON_ORBIT_RADIUS);
     }
 
     @Override
@@ -168,9 +170,9 @@ public class JoglExample implements GLEventListener {
     }
 
     private void setMaterial(GL2 gl, float[] rgba) {
-        float[] ambient = {rgba[0] * 0.2f, rgba[1] * 0.2f, rgba[2] * 0.2f, 1.0f};
-        float[] diffuse = {rgba[0], rgba[1], rgba[2], 1.0f};
-        float[] specular = {0.9f, 0.9f, 0.9f, 1.0f};
+        float[] ambient = { rgba[0] * 0.2f, rgba[1] * 0.2f, rgba[2] * 0.2f, 1.0f };
+        float[] diffuse = { rgba[0], rgba[1], rgba[2], 1.0f };
+        float[] specular = { 0.9f, 0.9f, 0.9f, 1.0f };
         float shininess = 32.0f;
         gl.glMaterialfv(GL2.GL_FRONT_AND_BACK, GL2.GL_AMBIENT, ambient, 0);
         gl.glMaterialfv(GL2.GL_FRONT_AND_BACK, GL2.GL_DIFFUSE, diffuse, 0);
@@ -191,6 +193,51 @@ public class JoglExample implements GLEventListener {
         }
         gl.glEnd();
         gl.glEnable(GL2.GL_LIGHTING);
+    }
+
+    private void drawSphereGrid(GL2 gl, float radius) {
+        gl.glDisable(GL2.GL_LIGHTING);
+        gl.glColor3f(0.2f, 0.2f, 0.2f);
+        gl.glLineWidth(1.0f);
+        
+        int segments = 64;
+        int latitudeLines = 12;  // number of latitude lines (excluding poles)
+        int longitudeLines = 24; // number of longitude lines
+        
+        // Draw latitude lines (circles parallel to equator)
+        for (int i = 1; i < latitudeLines; i++) {
+            float lat = (float) (Math.PI * i / latitudeLines - Math.PI / 2.0); // from -90 to +90 degrees
+            float y = (float) (radius * Math.sin(lat));
+            float circleRadius = (float) (radius * Math.cos(lat));
+            
+            gl.glBegin(GL2.GL_LINE_LOOP);
+            for (int j = 0; j <= segments; j++) {
+                float lon = (float) (2.0 * Math.PI * j / segments);
+                float x = (float) (circleRadius * Math.cos(lon));
+                float z = (float) (circleRadius * Math.sin(lon));
+                gl.glVertex3f(x, y, z);
+            }
+            gl.glEnd();
+        }
+        
+        // Draw longitude lines (great circles through poles)
+        for (int i = 0; i < longitudeLines; i++) {
+            float lon = (float) (2.0 * Math.PI * i / longitudeLines);
+            
+            gl.glBegin(GL2.GL_LINE_STRIP);
+            for (int j = 0; j <= segments; j++) {
+                float lat = (float) (Math.PI * j / segments - Math.PI / 2.0); // from -90 to +90 degrees
+                float y = (float) (radius * Math.sin(lat));
+                float circleRadius = (float) (radius * Math.cos(lat));
+                float x = (float) (circleRadius * Math.cos(lon));
+                float z = (float) (circleRadius * Math.sin(lon));
+                gl.glVertex3f(x, y, z);
+            }
+            gl.glEnd();
+        }
+        
+        gl.glEnable(GL2.GL_LIGHTING);
+        gl.glLineWidth(1.0f);
     }
 
     private void updateAnimation() {
@@ -216,7 +263,8 @@ public class JoglExample implements GLEventListener {
                 return null;
             }
             String lower = resourcePath.toLowerCase();
-            String ext = lower.endsWith(".png") ? "png" : lower.endsWith(".jpg") || lower.endsWith(".jpeg") ? "jpg" : null;
+            String ext = lower.endsWith(".png") ? "png"
+                    : lower.endsWith(".jpg") || lower.endsWith(".jpeg") ? "jpg" : null;
             if (ext == null) {
                 System.err.println("Failed to load texture: " + resourcePath + " (unsupported extension)");
                 return null;
@@ -247,7 +295,8 @@ public class JoglExample implements GLEventListener {
                         rotationYDeg = -30.0f;
                         cameraZoom = -20.0f;
                     }
-                    default -> { }
+                    default -> {
+                    }
                 }
                 canvas.display();
             }
@@ -270,7 +319,8 @@ public class JoglExample implements GLEventListener {
         canvas.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (!isDragging) return;
+                if (!isDragging)
+                    return;
                 int dx = e.getX() - lastMouseX;
                 int dy = e.getY() - lastMouseY;
                 rotationYDeg += dx * 0.4f;
@@ -299,7 +349,7 @@ public class JoglExample implements GLEventListener {
 
         Frame frame = new Frame("JOGL Earth–Moon Orbit");
         frame.add(canvas);
-        frame.setSize(1000, 700);
+        frame.setSize(1600, 1000);
         frame.setLocationRelativeTo(null);
 
         final FPSAnimator animator = new FPSAnimator(canvas, 60, true);
