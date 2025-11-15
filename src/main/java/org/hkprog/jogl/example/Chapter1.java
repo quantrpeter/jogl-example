@@ -106,13 +106,37 @@ public class Chapter1 implements GLEventListener {
         gl.glRotatef(rotationYDeg, 0.0f, 1.0f, 0.0f);
 
         // Draw Earth at origin
+        drawEarth(gl);
+    }
+
+    private void drawEarth(GL2 gl) {
         gl.glPushMatrix();
-        gl.glRotatef(23.5f, 0.0f, 0.0f, 1.0f); // axial tilt
+
+        // Apply Earth's axial tilt (23.5 degrees) - tilt the entire coordinate system
+        gl.glRotatef(23.5f, 0.0f, 0.0f, 1.0f);
+        
+        // Apply Earth's rotation with texture offset around the tilted Y-axis
+        gl.glRotatef(90f, 0.0f, 1.0f, 0.0f);
+
+        // Set material properties
         setMaterial(gl, new float[]{1.0f, 1.0f, 1.0f, 1.0f});
-        earthTexture.enable(gl);
-        earthTexture.bind(gl);
-        glu.gluSphere(sphereQuadric, EARTH_RADIUS, 48, 32);
-        earthTexture.disable(gl);
+
+        if (earthTexture != null) {
+            earthTexture.enable(gl);
+            earthTexture.bind(gl);
+        }
+
+        // gluSphere generates a sphere with poles along Y-axis
+        // Rotate 90 degrees around X to align gluSphere's poles with our Y-axis properly
+        gl.glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+        
+        // Draw the sphere
+        glu.gluSphere(sphereQuadric, EARTH_RADIUS, 64, 64);
+
+        if (earthTexture != null) {
+            earthTexture.disable(gl);
+        }
+
         gl.glPopMatrix();
     }
 
