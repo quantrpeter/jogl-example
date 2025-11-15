@@ -142,9 +142,10 @@ public class JoglExample implements GLEventListener {
             moonTexture.enable(gl);
             moonTexture.bind(gl);
         } else {
-            setMaterial(gl, new float[]{0.7f, 0.7f, 0.7f, 1.0f});
+            setMaterial(gl, new float[]{0.1f, 0.2f, 0.8f, 1.0f});
         }
-        glu.gluSphere(sphereQuadric, MOON_RADIUS, 32, 24);
+        // glu.gluSphere(sphereQuadric, MOON_RADIUS, 32, 24);
+        glu.gluSphere(sphereQuadric, EARTH_RADIUS, 48, 32);
         if (moonTexture != null) {
             moonTexture.disable(gl);
         }
@@ -205,69 +206,29 @@ public class JoglExample implements GLEventListener {
 
     private void loadTextures(GL2 gl) {
         earthTexture = tryLoadTextureFromResources(gl, "/textures/earth.jpg");
-        if (earthTexture == null) {
-            earthTexture = tryLoadTextureFromResources(gl, "/textures/earth.png");
-        }
         moonTexture = tryLoadTextureFromResources(gl, "/textures/moon.jpg");
-        if (moonTexture == null) {
-            moonTexture = tryLoadTextureFromResources(gl, "/textures/moon.png");
-        }
-
-        if (earthTexture == null) {
-            earthTexture = createProceduralEarthTexture(gl);
-        }
-        if (moonTexture == null) {
-            moonTexture = createProceduralMoonTexture(gl);
-        }
     }
 
     private Texture tryLoadTextureFromResources(GL2 gl, String resourcePath) {
         try (InputStream in = getClass().getResourceAsStream(resourcePath)) {
-            if (in == null) return null;
+            if (in == null) {
+                System.err.println("Failed to load texture: " + resourcePath + " (resource not found)");
+                return null;
+            }
             String lower = resourcePath.toLowerCase();
             String ext = lower.endsWith(".png") ? "png" : lower.endsWith(".jpg") || lower.endsWith(".jpeg") ? "jpg" : null;
-            if (ext == null) return null;
-            return TextureIO.newTexture(in, true, ext);
+            if (ext == null) {
+                System.err.println("Failed to load texture: " + resourcePath + " (unsupported extension)");
+                return null;
+            }
+            Texture texture = TextureIO.newTexture(in, true, ext);
+            System.out.println("Successfully loaded texture: " + resourcePath);
+            return texture;
         } catch (IOException e) {
+            System.err.println("Failed to load texture: " + resourcePath + " - " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
-    }
-
-    private Texture createProceduralEarthTexture(GL2 gl) {
-        int width = 512;
-        int height = 256;
-        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = img.createGraphics();
-        g.setColor(new java.awt.Color(15, 40, 120));
-        g.fillRect(0, 0, width, height);
-        g.setColor(new java.awt.Color(20, 140, 60));
-        for (int i = 0; i < 12; i++) {
-            int w = 30 + (i * 7) % 90;
-            int h = 15 + (i * 5) % 60;
-            int x = (int) ((i * 41.3) % (width - w));
-            int y = (int) ((i * 23.7) % (height - h));
-            g.fillOval(x, y, w, h);
-        }
-        g.dispose();
-        return AWTTextureIO.newTexture(gl.getGLProfile(), img, true);
-    }
-
-    private Texture createProceduralMoonTexture(GL2 gl) {
-        int width = 256;
-        int height = 128;
-        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = img.createGraphics();
-        g.setColor(new java.awt.Color(170, 170, 170));
-        g.fillRect(0, 0, width, height);
-        g.setColor(new java.awt.Color(140, 140, 140));
-        for (int i = 0; i < 40; i++) {
-            int r = 3 + (i * 3) % 14;
-            int x = (int) ((i * 19.1) % (width - r));
-            int y = (int) ((i * 29.7) % (height - r));
-            g.fillOval(x, y, r, r);
-        }
-        g.dispose();
-        return AWTTextureIO.newTexture(gl.getGLProfile(), img, true);
     }
 
     private void attachInputHandlers(GLCanvas canvas) {
