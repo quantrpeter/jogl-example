@@ -162,7 +162,31 @@ public class DrawEarth implements GLEventListener {
             earthTexture.disable(gl);
         }
 
+        // Draw rotation axis through the poles
+        drawRotationAxis(gl);
+
         gl.glPopMatrix();
+    }
+
+    private void drawRotationAxis(GL2 gl) {
+        // Disable lighting for the axis so it's always visible
+        gl.glDisable(GL2.GL_LIGHTING);
+        gl.glDisable(GL2.GL_TEXTURE_2D);
+        
+        float axisLength = EARTH_RADIUS * 1.5f;
+        
+        // Draw the main axis line (yellow)
+        gl.glColor3f(1.0f, 1.0f, 0.0f);
+        gl.glLineWidth(3.0f);
+        gl.glBegin(GL2.GL_LINES);
+        gl.glVertex3f(0.0f, 0.0f, -axisLength);  // South pole
+        gl.glVertex3f(0.0f, 0.0f, axisLength);   // North pole
+        gl.glEnd();
+        
+        // Re-enable lighting and texture
+        gl.glEnable(GL2.GL_LIGHTING);
+        gl.glEnable(GL2.GL_TEXTURE_2D);
+        gl.glLineWidth(1.0f);
     }
 
     private void setMaterial(GL2 gl, float[] rgba) {
