@@ -1,0 +1,242 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800" style="background-color: #f8f9fa;">
+  <!-- Title -->
+  <text x="500" y="30" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#2c3e50">
+    Coordinate System Transformation: O₁ ↔ O₂
+  </text>
+  <text x="500" y="55" font-family="Arial, sans-serif" font-size="16" text-anchor="middle" fill="#34495e">
+    Earth-Centered Inertial Frame ↔ Satellite Body-Fixed Frame
+  </text>
+
+  <!-- Definitions for arrowheads and gradients -->
+  <defs>
+    <!-- Arrowhead for axes -->
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#e74c3c" />
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#27ae60" />
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#3498db" />
+    </marker>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#e67e22" />
+    </marker>
+    <marker id="arrowLightGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#82e0aa" />
+    </marker>
+    <marker id="arrowLightBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#85c1e9" />
+    </marker>
+    
+    <!-- Earth gradient -->
+    <radialGradient id="earthGradient">
+      <stop offset="0%" style="stop-color:#3498db;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e5a80;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Satellite gradient -->
+    <linearGradient id="satelliteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#bdc3c7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7f8c8d;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Main visualization area -->
+  <g id="main-scene">
+    
+    <!-- Grid background -->
+    <g opacity="0.1">
+      <line x1="100" y1="250" x2="900" y2="250" stroke="#34495e" stroke-width="1" stroke-dasharray="5,5"/>
+      <line x1="100" y1="350" x2="900" y2="350" stroke="#34495e" stroke-width="1" stroke-dasharray="5,5"/>
+      <line x1="100" y1="450" x2="900" y2="450" stroke="#34495e" stroke-width="1" stroke-dasharray="5,5"/>
+      <line x1="200" y1="150" x2="200" y2="550" stroke="#34495e" stroke-width="1" stroke-dasharray="5,5"/>
+      <line x1="400" y1="150" x2="400" y2="550" stroke="#34495e" stroke-width="1" stroke-dasharray="5,5"/>
+      <line x1="600" y1="150" x2="600" y2="550" stroke="#34495e" stroke-width="1" stroke-dasharray="5,5"/>
+      <line x1="800" y1="150" x2="800" y2="550" stroke="#34495e" stroke-width="1" stroke-dasharray="5,5"/>
+    </g>
+
+    <!-- Earth with O₁ coordinate system -->
+    <g id="earth-system">
+      <!-- Earth -->
+      <circle cx="200" cy="350" r="60" fill="url(#earthGradient)" stroke="#2c3e50" stroke-width="2"/>
+      <text x="200" y="355" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Earth</text>
+      
+      <!-- O₁ origin marker -->
+      <circle cx="200" cy="350" r="5" fill="#2c3e50"/>
+      <text x="185" y="340" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#2c3e50">O₁</text>
+      
+      <!-- O₁ coordinate axes -->
+      <!-- X₁ axis (red) -->
+      <line x1="200" y1="350" x2="320" y2="350" stroke="#e74c3c" stroke-width="3" marker-end="url(#arrowRed)"/>
+      <text x="330" y="355" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#e74c3c">X₁</text>
+      
+      <!-- Y₁ axis (green) -->
+      <line x1="200" y1="350" x2="200" y2="230" stroke="#27ae60" stroke-width="3" marker-end="url(#arrowGreen)"/>
+      <text x="205" y="220" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#27ae60">Y₁</text>
+      
+      <!-- Z₁ axis (blue) - shown at angle to represent 3D -->
+      <line x1="200" y1="350" x2="140" y2="305" stroke="#3498db" stroke-width="3" marker-end="url(#arrowBlue)"/>
+      <text x="125" y="300" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#3498db">Z₁</text>
+      
+      <!-- Frame label -->
+      <text x="200" y="440" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#2c3e50">
+        Earth-Centered Inertial Frame
+      </text>
+      <text x="200" y="458" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#7f8c8d">
+        (地心惯性坐标系)
+      </text>
+    </g>
+
+    <!-- Orbital path -->
+    <ellipse cx="200" cy="350" rx="350" ry="150" fill="none" stroke="#95a5a6" stroke-width="2" stroke-dasharray="10,5" opacity="0.5"/>
+    
+    <!-- Satellite with O₂ coordinate system -->
+    <g id="satellite-system">
+      <!-- Satellite position on orbit -->
+      <circle cx="550" cy="300" r="2" fill="#e74c3c" opacity="0.5"/>
+      
+      <!-- Translation vector T -->
+      <line x1="200" y1="350" x2="550" y2="300" stroke="#9b59b6" stroke-width="2" stroke-dasharray="5,5"/>
+      <text x="375" y="310" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#9b59b6">T (translation)</text>
+      
+      <!-- Satellite body -->
+      <rect x="525" y="285" width="50" height="30" fill="url(#satelliteGradient)" stroke="#34495e" stroke-width="2" rx="3"/>
+      <!-- Solar panels -->
+      <rect x="495" y="292" width="25" height="16" fill="#1e3a5f" stroke="#34495e" stroke-width="1"/>
+      <rect x="580" y="292" width="25" height="16" fill="#1e3a5f" stroke="#34495e" stroke-width="1"/>
+      <!-- Antenna -->
+      <line x1="550" y1="285" x2="550" y2="270" stroke="#95a5a6" stroke-width="2"/>
+      <circle cx="550" cy="268" r="3" fill="#95a5a6"/>
+      
+      <text x="550" y="340" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#2c3e50">Satellite</text>
+      
+      <!-- O₂ origin marker -->
+      <circle cx="550" cy="300" r="5" fill="#2c3e50"/>
+      <text x="535" y="290" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#2c3e50">O₂</text>
+      
+      <!-- Rotation angle indicator -->
+      <path d="M 570 300 A 20 20 0 0 0 565 315" fill="none" stroke="#8e44ad" stroke-width="2"/>
+      <text x="580" y="315" font-family="Arial, sans-serif" font-size="12" font-style="italic" fill="#8e44ad">θ</text>
+      
+      <!-- O₂ coordinate axes (rotated) -->
+      <!-- X₂ axis (orange) - rotated -->
+      <line x1="550" y1="300" x2="650" y2="270" stroke="#e67e22" stroke-width="3" marker-end="url(#arrowOrange)"/>
+      <text x="660" y="275" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#e67e22">X₂</text>
+      
+      <!-- Y₂ axis (light green) - rotated -->
+      <line x1="550" y1="300" x2="520" y2="200" stroke="#82e0aa" stroke-width="3" marker-end="url(#arrowLightGreen)"/>
+      <text x="515" y="195" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#82e0aa">Y₂</text>
+      
+      <!-- Z₂ axis (light blue) - shown at angle -->
+      <line x1="550" y1="300" x2="505" y2="265" stroke="#85c1e9" stroke-width="3" marker-end="url(#arrowLightBlue)"/>
+      <text x="495" y="260" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#85c1e9">Z₂</text>
+      
+      <!-- Frame label -->
+      <text x="550" y="360" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#2c3e50">
+        Satellite Body-Fixed Frame
+      </text>
+      <text x="550" y="378" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#7f8c8d">
+        (卫星本体坐标系)
+      </text>
+      
+      <!-- Test point in O₂ frame -->
+      <circle cx="620" cy="240" r="8" fill="#e91e63" stroke="#ad1457" stroke-width="2"/>
+      <text x="635" y="235" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#e91e63">P₂</text>
+      <text x="635" y="250" font-family="Arial, sans-serif" font-size="11" fill="#e91e63">(3, 2, 1.5)</text>
+      
+      <!-- Test point in O₁ frame (same physical point) -->
+      <circle cx="620" cy="240" r="6" fill="none" stroke="#9c27b0" stroke-width="2" stroke-dasharray="3,3"/>
+      <text x="635" y="265" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#9c27b0">P₁</text>
+    </g>
+  </g>
+
+  <!-- Transformation formula box -->
+  <g id="formula-box">
+    <rect x="100" y="500" width="800" height="130" fill="#ecf0f1" stroke="#2c3e50" stroke-width="2" rx="10"/>
+    
+    <text x="500" y="530" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#2c3e50">
+      Coordinate Transformation Formula
+    </text>
+    
+    <text x="500" y="565" font-family="Courier New, monospace" font-size="24" font-weight="bold" text-anchor="middle" fill="#c0392b">
+      P₁ = R(θ) × P₂ + T
+    </text>
+    
+    <!-- Formula explanation -->
+    <text x="120" y="595" font-family="Arial, sans-serif" font-size="13" fill="#34495e">
+      <tspan font-weight="bold" fill="#9c27b0">P₁</tspan> = Point in Earth frame (O₁)
+    </text>
+    <text x="120" y="615" font-family="Arial, sans-serif" font-size="13" fill="#34495e">
+      <tspan font-weight="bold" fill="#e91e63">P₂</tspan> = Point in Satellite frame (O₂)
+    </text>
+    
+    <text x="500" y="595" font-family="Arial, sans-serif" font-size="13" fill="#34495e">
+      <tspan font-weight="bold" fill="#8e44ad">R(θ)</tspan> = Rotation matrix (attitude angle θ)
+    </text>
+    <text x="500" y="615" font-family="Arial, sans-serif" font-size="13" fill="#34495e">
+      <tspan font-weight="bold" fill="#9b59b6">T</tspan> = Translation vector (satellite position)
+    </text>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="50" y="650" width="300" height="130" fill="white" stroke="#34495e" stroke-width="1" rx="5" opacity="0.95"/>
+    <text x="200" y="675" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#2c3e50">
+      Visualization Key
+    </text>
+    
+    <!-- O₁ Frame -->
+    <line x1="70" y1="695" x2="110" y2="695" stroke="#e74c3c" stroke-width="3"/>
+    <line x1="70" y1="715" x2="110" y2="715" stroke="#27ae60" stroke-width="3"/>
+    <line x1="70" y1="735" x2="110" y2="735" stroke="#3498db" stroke-width="3"/>
+    <text x="120" y="700" font-family="Arial, sans-serif" font-size="12" fill="#34495e">O₁ Frame (X₁, Y₁, Z₁)</text>
+    <text x="120" y="720" font-family="Arial, sans-serif" font-size="11" fill="#7f8c8d">Earth-Centered</text>
+    <text x="120" y="740" font-family="Arial, sans-serif" font-size="11" fill="#7f8c8d">Inertial Reference</text>
+    
+    <!-- O₂ Frame -->
+    <line x1="70" y1="760" x2="110" y2="760" stroke="#e67e22" stroke-width="3"/>
+    <text x="120" y="765" font-family="Arial, sans-serif" font-size="12" fill="#34495e">O₂ Frame (X₂, Y₂, Z₂)</text>
+  </g>
+
+  <g id="legend2">
+    <rect x="370" y="650" width="280" height="130" fill="white" stroke="#34495e" stroke-width="1" rx="5" opacity="0.95"/>
+    <text x="510" y="675" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#2c3e50">
+      Key Concepts
+    </text>
+    
+    <circle cx="390" cy="695" r="6" fill="#e91e63"/>
+    <text x="405" y="700" font-family="Arial, sans-serif" font-size="12" fill="#34495e">Test point in O₂ coordinates</text>
+    
+    <circle cx="390" cy="720" r="5" fill="none" stroke="#9c27b0" stroke-width="2" stroke-dasharray="2,2"/>
+    <text x="405" y="725" font-family="Arial, sans-serif" font-size="12" fill="#34495e">Same point in O₁ coordinates</text>
+    
+    <line x1="390" y1="745" x2="440" y2="745" stroke="#9b59b6" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="450" y="750" font-family="Arial, sans-serif" font-size="12" fill="#34495e">Translation vector</text>
+    
+    <path d="M 390 765 A 10 10 0 0 0 395 775" fill="none" stroke="#8e44ad" stroke-width="2"/>
+    <text x="405" y="775" font-family="Arial, sans-serif" font-size="12" fill="#34495e">Rotation angle θ (attitude)</text>
+  </g>
+
+  <g id="legend3">
+    <rect x="670" y="650" width="280" height="130" fill="white" stroke="#34495e" stroke-width="1" rx="5" opacity="0.95"/>
+    <text x="810" y="675" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#2c3e50">
+      Transformation Steps
+    </text>
+    
+    <text x="690" y="700" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#c0392b">1. Rotation</text>
+    <text x="690" y="718" font-family="Arial, sans-serif" font-size="11" fill="#34495e">Apply R(θ) to account for</text>
+    <text x="690" y="733" font-family="Arial, sans-serif" font-size="11" fill="#34495e">satellite attitude</text>
+    
+    <text x="690" y="755" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#c0392b">2. Translation</text>
+    <text x="690" y="773" font-family="Arial, sans-serif" font-size="11" fill="#34495e">Add T to account for</text>
+    <text x="690" y="788" font-family="Arial, sans-serif" font-size="11" fill="#34495e">satellite orbital position</text>
+  </g>
+
+  <!-- Footer note -->
+  <text x="500" y="795" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#7f8c8d" font-style="italic">
+    The same physical point has different coordinates in different reference frames
+  </text>
+
+</svg>
+
