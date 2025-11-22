@@ -498,7 +498,7 @@ public class Chapter1 implements GLEventListener {
         textRenderer.draw("Earth-Satellite Coordinate Transformation (地球-卫星坐标变换)", 20, y);
         y -= lineHeight * 1.5;
         
-        textRenderer.setColor(0.2f, 0.4f, 0.9f, 1.0f);
+        textRenderer.setColor(0.2f, 0.4f, 0.7f, 1.0f);
         textRenderer.draw("Earth (地球) - O₁ Earth-Centered Inertial Frame (地心惯性坐标系)", 20, y);
         y -= lineHeight;
         
