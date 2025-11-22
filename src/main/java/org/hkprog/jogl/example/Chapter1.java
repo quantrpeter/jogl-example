@@ -7,14 +7,11 @@ import com.jogamp.opengl.GLEventListener;
 import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.glu.GLU;
-import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.FPSAnimator;
-import com.jogamp.opengl.util.texture.awt.AWTTextureIO;
-import com.jogamp.opengl.util.texture.Texture;
-import com.jogamp.opengl.util.texture.TextureIO;
+import com.jogamp.opengl.util.awt.TextRenderer;
 
 import java.awt.Frame;
-import java.awt.Graphics2D;
+import java.awt.Font;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -23,72 +20,74 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.InputStream;
 
+/**
+ * Demonstrates coordinate transformation between two reference frames:
+ * O₁x₁y₁z₁ - Earth-centered inertial frame (地心惯性坐标系)
+ * O₂x₂y₂z₂ - Satellite body-fixed frame (卫星本体坐标系)
+ */
 public class Chapter1 implements GLEventListener {
 
     private final GLU glu = new GLU();
-    private GLUquadric sphereQuadric;
+    private TextRenderer textRenderer;
 
-    private float rotationXDeg = 20.0f;
-    private float rotationYDeg = -30.0f;
-    private float cameraZoom = -20.0f; // move camera back along -Z
+    // Camera control
+    private float cameraRotX = 25.0f;
+    private float cameraRotY = -35.0f;
+    private float cameraZoom = -30.0f;
 
+    // Mouse interaction
     private int lastMouseX;
     private int lastMouseY;
     private boolean isDragging = false;
 
-    private double orbitAngleRad = 0.0; // moon orbital angle
-    private long lastNanos = System.nanoTime();
+    // Animation parameters for O₂ frame
+    private float o2TranslationX = 0.0f;
+    private float o2TranslationY = 0.0f;
+    private float o2TranslationZ = 0.0f;
+    private float o2RotationAngle = 0.0f; // rotation around Z-axis
 
-    // Scene parameters
-    private static final float EARTH_RADIUS = 2.0f;
-    private static final float MOON_RADIUS = 0.6f;
-    private static final float MOON_ORBIT_RADIUS = 6.0f;
-    private static final double MOON_ORBIT_PERIOD_SEC = 8.0; // seconds per orbit
+    // Test point coordinates
+    private float testPointX = 3.0f;
+    private float testPointY = 2.0f;
+    private float testPointZ = 1.5f;
 
-    // Textures
-    private Texture earthTexture;
+    // Animation control
+    private boolean animationEnabled = true;
+    private long lastTime = System.nanoTime();
+
+    // Display options
+    private boolean showGrid = true;
+    private boolean showTrajectory = true;
+    
+    // Visual parameters
+    private static final float EARTH_RADIUS = 2.5f;
+    private static final float SATELLITE_SIZE = 0.6f;
+    private static final float ORBIT_RADIUS = 8.0f;
 
     @Override
     public void init(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
 
-        gl.glClearColor(0.36f, 0.36f, 0.36f, 1.0f);
+        gl.glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
         gl.glEnable(GL2.GL_DEPTH_TEST);
         gl.glDepthFunc(GL2.GL_LEQUAL);
-        gl.glEnable(GL2.GL_CULL_FACE);
-        gl.glCullFace(GL2.GL_BACK);
+        gl.glEnable(GL2.GL_BLEND);
+        gl.glBlendFunc(GL2.GL_SRC_ALPHA, GL2.GL_ONE_MINUS_SRC_ALPHA);
+        gl.glLineWidth(2.0f);
 
-        // Lighting
-        gl.glEnable(GL2.GL_LIGHTING);
-        gl.glEnable(GL2.GL_LIGHT0);
-        float[] lightAmbient = {0.05f, 0.05f, 0.05f, 1.0f};
-        float[] lightDiffuse = {0.9f, 0.9f, 0.9f, 1.0f};
-        float[] lightPosition = {10.0f, 8.0f, 12.0f, 1.0f};
-        gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_AMBIENT, lightAmbient, 0);
-        gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_DIFFUSE, lightDiffuse, 0);
-        gl.glLightfv(GL2.GL_LIGHT0, GL2.GL_POSITION, lightPosition, 0);
+        // Enable anti-aliasing
+        gl.glEnable(GL2.GL_LINE_SMOOTH);
+        gl.glHint(GL2.GL_LINE_SMOOTH_HINT, GL2.GL_NICEST);
 
-        // Quadric for spheres
-        sphereQuadric = glu.gluNewQuadric();
-        glu.gluQuadricNormals(sphereQuadric, GLU.GLU_SMOOTH);
-        glu.gluQuadricTexture(sphereQuadric, true);
-
-        // Normalize normals for scaled objects
-        gl.glEnable(GL2.GL_NORMALIZE);
-
-        // Texturing
-        gl.glEnable(GL2.GL_TEXTURE_2D);
-        loadTextures(gl);
+        // Initialize text renderer
+        textRenderer = new TextRenderer(new Font("SansSerif", Font.BOLD, 16));
     }
 
     @Override
     public void dispose(GLAutoDrawable drawable) {
-        if (sphereQuadric != null) {
-            sphereQuadric = null; // let GC clean; JOGL handles native cleanup
+        if (textRenderer != null) {
+            textRenderer.dispose();
         }
     }
 
@@ -97,71 +96,456 @@ public class Chapter1 implements GLEventListener {
         GL2 gl = drawable.getGL().getGL2();
         gl.glClear(GL2.GL_COLOR_BUFFER_BIT | GL2.GL_DEPTH_BUFFER_BIT);
 
+        // Update animation
+        if (animationEnabled) {
+            updateAnimation();
+        }
+
         gl.glMatrixMode(GL2.GL_MODELVIEW);
         gl.glLoadIdentity();
 
-        // Camera transform
+        // Apply camera transformations
         gl.glTranslatef(0.0f, 0.0f, cameraZoom);
-        gl.glRotatef(rotationXDeg, 1.0f, 0.0f, 0.0f);
-        gl.glRotatef(rotationYDeg, 0.0f, 1.0f, 0.0f);
+        gl.glRotatef(cameraRotX, 1.0f, 0.0f, 0.0f);
+        gl.glRotatef(cameraRotY, 0.0f, 1.0f, 0.0f);
 
-        // Draw Earth at origin
+        // Draw grid if enabled
+        if (showGrid) {
+            drawGrid(gl);
+        }
+
+        // Draw Earth at O₁ origin
         drawEarth(gl);
+        
+        // Draw O₁ inertial frame (Earth-centered)
+        drawCoordinateFrame(gl, "O₁", 
+            new float[]{1.0f, 0.0f, 0.0f}, // X - red
+            new float[]{0.0f, 0.8f, 0.0f}, // Y - green
+            new float[]{0.0f, 0.0f, 1.0f}, // Z - blue
+            5.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        
+        // Draw orbital path
+        drawOrbit(gl, ORBIT_RADIUS);
+
+        // Draw satellite at O₂ position
+        gl.glPushMatrix();
+        gl.glTranslatef(o2TranslationX, o2TranslationY, o2TranslationZ);
+        gl.glRotatef(o2RotationAngle, 0.0f, 0.0f, 1.0f);
+        
+        // Draw satellite body
+        drawSatellite(gl);
+
+        // Draw O₂ satellite body-fixed frame
+        drawCoordinateFrame(gl, "O₂", 
+            new float[]{1.0f, 0.5f, 0.0f}, // X - orange
+            new float[]{0.5f, 1.0f, 0.5f}, // Y - light green
+            new float[]{0.5f, 0.5f, 1.0f}, // Z - light blue
+            4.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+
+        // Draw test point in O₂ frame (local coordinates)
+        drawPoint(gl, testPointX, testPointY, testPointZ, 
+                  new float[]{1.0f, 0.0f, 1.0f, 1.0f}, 8.0f);
+
+        gl.glPopMatrix();
+
+        // Draw the same point as it appears in O₁ frame (world coordinates)
+        float[] worldCoords = transformToO1Frame(testPointX, testPointY, testPointZ);
+        drawPoint(gl, worldCoords[0], worldCoords[1], worldCoords[2], 
+                  new float[]{0.8f, 0.0f, 0.8f, 0.5f}, 6.0f);
+
+        // Draw trajectory line between the two representations
+        if (showTrajectory) {
+            drawTrajectoryLine(gl, 
+                o2TranslationX + testPointX, o2TranslationY + testPointY, o2TranslationZ + testPointZ,
+                worldCoords[0], worldCoords[1], worldCoords[2]);
+        }
+
+        // Draw 2D overlay with information
+        drawOverlay(drawable, worldCoords);
     }
 
-    private void drawEarth(GL2 gl) {
+    private void updateAnimation() {
+        long currentTime = System.nanoTime();
+        float deltaTime = (currentTime - lastTime) / 1_000_000_000.0f;
+        lastTime = currentTime;
+
+        // Satellite orbital motion around Earth
+        float orbitSpeed = 0.3f; // radians per second
+        float angle = (currentTime / 1_000_000_000.0f) * orbitSpeed;
+
+        o2TranslationX = ORBIT_RADIUS * (float) Math.cos(angle);
+        o2TranslationY = ORBIT_RADIUS * (float) Math.sin(angle);
+        o2TranslationZ = 0.0f;
+
+        // Satellite attitude rotation (yaw)
+        float rotationSpeed = 30.0f; // degrees per second
+        o2RotationAngle += rotationSpeed * deltaTime;
+        if (o2RotationAngle > 360.0f) {
+            o2RotationAngle -= 360.0f;
+        }
+    }
+
+    private float[] transformToO1Frame(float x2, float y2, float z2) {
+        // Transform point from O₂ frame to O₁ frame
+        // Formula: P₁ = R * P₂ + T
+        // where R is rotation matrix and T is translation vector
+
+        double angleRad = Math.toRadians(o2RotationAngle);
+        float cosA = (float) Math.cos(angleRad);
+        float sinA = (float) Math.sin(angleRad);
+
+        // Apply rotation (around Z-axis)
+        float x1_rot = cosA * x2 - sinA * y2;
+        float y1_rot = sinA * x2 + cosA * y2;
+        float z1_rot = z2;
+
+        // Apply translation
+        float x1 = x1_rot + o2TranslationX;
+        float y1 = y1_rot + o2TranslationY;
+        float z1 = z1_rot + o2TranslationZ;
+
+        return new float[]{x1, y1, z1};
+    }
+
+    private void drawCoordinateFrame(GL2 gl, String label, 
+                                     float[] xColor, float[] yColor, float[] zColor,
+                                     float axisLength, float ox, float oy, float oz, float rotation) {
         gl.glPushMatrix();
 
-        // Apply Earth's axial tilt (23.5 degrees) - tilt the entire coordinate system
-        gl.glRotatef(23.5f, 0.0f, 0.0f, 1.0f);
-        
-        // Apply Earth's rotation with texture offset around the tilted Y-axis
-        gl.glRotatef(90f, 0.0f, 1.0f, 0.0f);
+        // Draw origin sphere
+        gl.glColor4f(0.2f, 0.2f, 0.2f, 0.8f);
+        drawSphere(gl, 0.0f, 0.0f, 0.0f, 0.2f);
 
-        // Set material properties
-        setMaterial(gl, new float[]{1.0f, 1.0f, 1.0f, 1.0f});
+        // Draw X-axis (red-ish)
+        gl.glColor3fv(xColor, 0);
+        drawArrow(gl, 0, 0, 0, axisLength, 0, 0);
 
-        if (earthTexture != null) {
-            earthTexture.enable(gl);
-            earthTexture.bind(gl);
-        }
+        // Draw Y-axis (green-ish)
+        gl.glColor3fv(yColor, 0);
+        drawArrow(gl, 0, 0, 0, 0, axisLength, 0);
 
-        // gluSphere generates a sphere with poles along Y-axis
-        // Rotate 90 degrees around X to align gluSphere's poles with our Y-axis properly
-        gl.glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-        
-        // Draw the sphere
-        glu.gluSphere(sphereQuadric, EARTH_RADIUS, 64, 64);
-
-        if (earthTexture != null) {
-            earthTexture.disable(gl);
-        }
-        
-        // Draw rotation axis through the poles
-        drawRotationAxis(gl);
+        // Draw Z-axis (blue-ish)
+        gl.glColor3fv(zColor, 0);
+        drawArrow(gl, 0, 0, 0, 0, 0, axisLength);
 
         gl.glPopMatrix();
     }
 
-    private void drawRotationAxis(GL2 gl) {
-        // Disable lighting for the axis so it's always visible
-        gl.glDisable(GL2.GL_LIGHTING);
-        gl.glDisable(GL2.GL_TEXTURE_2D);
+    private void drawArrow(GL2 gl, float x1, float y1, float z1, 
+                          float x2, float y2, float z2) {
+        // Draw line
+        gl.glBegin(GL2.GL_LINES);
+        gl.glVertex3f(x1, y1, z1);
+        gl.glVertex3f(x2, y2, z2);
+        gl.glEnd();
+
+        // Draw arrowhead
+        float dx = x2 - x1;
+        float dy = y2 - y1;
+        float dz = z2 - z1;
+        float length = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
         
-        float axisLength = EARTH_RADIUS * 1.5f;
+        if (length > 0) {
+            gl.glPushMatrix();
+            gl.glTranslatef(x2, y2, z2);
+            
+            // Rotate to point in direction of arrow
+            float angleY = (float) Math.toDegrees(Math.atan2(dx, dz));
+            float angleX = (float) Math.toDegrees(Math.asin(-dy / length));
+            gl.glRotatef(angleY, 0, 1, 0);
+            gl.glRotatef(angleX, 1, 0, 0);
+            
+            // Draw cone
+            drawCone(gl, 0.15f, 0.4f);
+            gl.glPopMatrix();
+        }
+    }
+
+    private void drawCone(GL2 gl, float radius, float height) {
+        int slices = 12;
+        gl.glBegin(GL2.GL_TRIANGLE_FAN);
+        gl.glVertex3f(0, 0, height); // tip
+        for (int i = 0; i <= slices; i++) {
+            float angle = (float) (2.0 * Math.PI * i / slices);
+            float x = radius * (float) Math.cos(angle);
+            float y = radius * (float) Math.sin(angle);
+            gl.glVertex3f(x, y, 0);
+        }
+        gl.glEnd();
+    }
+
+    private void drawSphere(GL2 gl, float x, float y, float z, float radius) {
+        gl.glPushMatrix();
+        gl.glTranslatef(x, y, z);
         
-        // Draw the main axis line (yellow)
-        gl.glColor3f(1.0f, 1.0f, 0.0f);
+        int slices = 20;
+        int stacks = 20;
+        
+        for (int i = 0; i < stacks; i++) {
+            float lat0 = (float) (Math.PI * (-0.5 + (float) i / stacks));
+            float lat1 = (float) (Math.PI * (-0.5 + (float) (i + 1) / stacks));
+            float z0 = radius * (float) Math.sin(lat0);
+            float z1 = radius * (float) Math.sin(lat1);
+            float r0 = radius * (float) Math.cos(lat0);
+            float r1 = radius * (float) Math.cos(lat1);
+            
+            gl.glBegin(GL2.GL_QUAD_STRIP);
+            for (int j = 0; j <= slices; j++) {
+                float lng = (float) (2 * Math.PI * j / slices);
+                float x0 = r0 * (float) Math.cos(lng);
+                float y0 = r0 * (float) Math.sin(lng);
+                float x1 = r1 * (float) Math.cos(lng);
+                float y1 = r1 * (float) Math.sin(lng);
+                
+                gl.glVertex3f(x0, y0, z0);
+                gl.glVertex3f(x1, y1, z1);
+            }
+            gl.glEnd();
+        }
+        
+        gl.glPopMatrix();
+    }
+    
+    private void drawEarth(GL2 gl) {
+        // Draw Earth as a blue-green sphere
+        gl.glPushMatrix();
+        
+        // Earth colors - blue ocean with green continents
+        gl.glColor4f(0.2f, 0.4f, 0.7f, 0.9f);
+        drawSphere(gl, 0.0f, 0.0f, 0.0f, EARTH_RADIUS);
+        
+        // Draw equatorial line
+        gl.glColor4f(0.3f, 0.3f, 0.3f, 0.5f);
+        gl.glLineWidth(1.0f);
+        gl.glBegin(GL2.GL_LINE_LOOP);
+        int segments = 64;
+        for (int i = 0; i < segments; i++) {
+            float angle = (float) (2.0 * Math.PI * i / segments);
+            float x = EARTH_RADIUS * (float) Math.cos(angle);
+            float y = EARTH_RADIUS * (float) Math.sin(angle);
+            gl.glVertex3f(x, y, 0.0f);
+        }
+        gl.glEnd();
+        gl.glLineWidth(2.0f);
+        
+        gl.glPopMatrix();
+    }
+    
+    private void drawSatellite(GL2 gl) {
+        // Draw satellite body (box)
+        gl.glColor4f(0.8f, 0.8f, 0.9f, 1.0f);
+        drawBox(gl, 0.0f, 0.0f, 0.0f, SATELLITE_SIZE, SATELLITE_SIZE * 0.6f, SATELLITE_SIZE * 0.8f);
+        
+        // Draw solar panels
+        gl.glColor4f(0.1f, 0.1f, 0.3f, 0.9f);
+        float panelWidth = SATELLITE_SIZE * 2.0f;
+        float panelHeight = SATELLITE_SIZE * 0.8f;
+        float panelThickness = 0.05f;
+        
+        // Left panel
+        drawBox(gl, -(SATELLITE_SIZE/2 + panelWidth/2), 0.0f, 0.0f, 
+                panelWidth, panelHeight, panelThickness);
+        
+        // Right panel
+        drawBox(gl, (SATELLITE_SIZE/2 + panelWidth/2), 0.0f, 0.0f, 
+                panelWidth, panelHeight, panelThickness);
+        
+        // Draw antenna
+        gl.glColor4f(0.9f, 0.9f, 0.9f, 1.0f);
         gl.glLineWidth(3.0f);
         gl.glBegin(GL2.GL_LINES);
-        gl.glVertex3f(0.0f, 0.0f, -axisLength);  // South pole
-        gl.glVertex3f(0.0f, 0.0f, axisLength);   // North pole
+        gl.glVertex3f(0.0f, 0.0f, SATELLITE_SIZE * 0.4f);
+        gl.glVertex3f(0.0f, 0.0f, SATELLITE_SIZE * 1.2f);
+        gl.glEnd();
+        gl.glLineWidth(2.0f);
+    }
+    
+    private void drawBox(GL2 gl, float cx, float cy, float cz, 
+                         float width, float height, float depth) {
+        float w = width / 2;
+        float h = height / 2;
+        float d = depth / 2;
+        
+        gl.glBegin(GL2.GL_QUADS);
+        
+        // Front face
+        gl.glVertex3f(cx - w, cy - h, cz + d);
+        gl.glVertex3f(cx + w, cy - h, cz + d);
+        gl.glVertex3f(cx + w, cy + h, cz + d);
+        gl.glVertex3f(cx - w, cy + h, cz + d);
+        
+        // Back face
+        gl.glVertex3f(cx - w, cy - h, cz - d);
+        gl.glVertex3f(cx - w, cy + h, cz - d);
+        gl.glVertex3f(cx + w, cy + h, cz - d);
+        gl.glVertex3f(cx + w, cy - h, cz - d);
+        
+        // Top face
+        gl.glVertex3f(cx - w, cy + h, cz - d);
+        gl.glVertex3f(cx - w, cy + h, cz + d);
+        gl.glVertex3f(cx + w, cy + h, cz + d);
+        gl.glVertex3f(cx + w, cy + h, cz - d);
+        
+        // Bottom face
+        gl.glVertex3f(cx - w, cy - h, cz - d);
+        gl.glVertex3f(cx + w, cy - h, cz - d);
+        gl.glVertex3f(cx + w, cy - h, cz + d);
+        gl.glVertex3f(cx - w, cy - h, cz + d);
+        
+        // Right face
+        gl.glVertex3f(cx + w, cy - h, cz - d);
+        gl.glVertex3f(cx + w, cy + h, cz - d);
+        gl.glVertex3f(cx + w, cy + h, cz + d);
+        gl.glVertex3f(cx + w, cy - h, cz + d);
+        
+        // Left face
+        gl.glVertex3f(cx - w, cy - h, cz - d);
+        gl.glVertex3f(cx - w, cy - h, cz + d);
+        gl.glVertex3f(cx - w, cy + h, cz + d);
+        gl.glVertex3f(cx - w, cy + h, cz - d);
+        
+        gl.glEnd();
+    }
+    
+    private void drawOrbit(GL2 gl, float radius) {
+        gl.glColor4f(0.5f, 0.5f, 0.5f, 0.4f);
+        gl.glLineWidth(1.5f);
+        gl.glBegin(GL2.GL_LINE_LOOP);
+        int segments = 128;
+        for (int i = 0; i < segments; i++) {
+            float angle = (float) (2.0 * Math.PI * i / segments);
+            float x = radius * (float) Math.cos(angle);
+            float y = radius * (float) Math.sin(angle);
+            gl.glVertex3f(x, y, 0.0f);
+        }
+        gl.glEnd();
+        gl.glLineWidth(2.0f);
+    }
+
+    private void drawPoint(GL2 gl, float x, float y, float z, float[] color, float size) {
+        gl.glPointSize(size);
+        gl.glColor4fv(color, 0);
+        gl.glBegin(GL2.GL_POINTS);
+        gl.glVertex3f(x, y, z);
+        gl.glEnd();
+
+        // Draw small sphere for better visibility
+        gl.glColor4fv(color, 0);
+        drawSphere(gl, x, y, z, 0.25f);
+    }
+
+    private void drawTrajectoryLine(GL2 gl, float x1, float y1, float z1, 
+                                    float x2, float y2, float z2) {
+        gl.glLineStipple(2, (short) 0xAAAA);
+        gl.glEnable(GL2.GL_LINE_STIPPLE);
+        gl.glColor4f(0.7f, 0.0f, 0.7f, 0.4f);
+        gl.glLineWidth(1.5f);
+        
+        gl.glBegin(GL2.GL_LINES);
+        gl.glVertex3f(x1, y1, z1);
+        gl.glVertex3f(x2, y2, z2);
         gl.glEnd();
         
-        // Re-enable lighting and texture
-        gl.glEnable(GL2.GL_LIGHTING);
-        gl.glEnable(GL2.GL_TEXTURE_2D);
+        gl.glDisable(GL2.GL_LINE_STIPPLE);
+        gl.glLineWidth(2.0f);
+    }
+
+    private void drawGrid(GL2 gl) {
+        gl.glColor4f(0.8f, 0.8f, 0.8f, 0.5f);
         gl.glLineWidth(1.0f);
+        
+        float gridSize = 20.0f;
+        int gridLines = 20;
+        float step = gridSize * 2 / gridLines;
+        
+        gl.glBegin(GL2.GL_LINES);
+        for (int i = 0; i <= gridLines; i++) {
+            float pos = -gridSize + i * step;
+            // Lines parallel to X-axis
+            gl.glVertex3f(-gridSize, pos, 0);
+            gl.glVertex3f(gridSize, pos, 0);
+            // Lines parallel to Y-axis
+            gl.glVertex3f(pos, -gridSize, 0);
+            gl.glVertex3f(pos, gridSize, 0);
+        }
+        gl.glEnd();
+        
+        gl.glLineWidth(2.0f);
+    }
+
+    private void drawOverlay(GLAutoDrawable drawable, float[] worldCoords) {
+        GL2 gl = drawable.getGL().getGL2();
+        
+        // Save the current matrices
+        gl.glMatrixMode(GL2.GL_PROJECTION);
+        gl.glPushMatrix();
+        gl.glLoadIdentity();
+        gl.glOrtho(0, drawable.getSurfaceWidth(), 0, drawable.getSurfaceHeight(), -1, 1);
+        
+        gl.glMatrixMode(GL2.GL_MODELVIEW);
+        gl.glPushMatrix();
+        gl.glLoadIdentity();
+        
+        gl.glDisable(GL2.GL_DEPTH_TEST);
+        
+        textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+        textRenderer.setColor(1f, 1f, 1f, 1.0f);
+        
+        int y = drawable.getSurfaceHeight() - 30;
+        int lineHeight = 35;
+        
+        textRenderer.setColor(1f, 1f, 1f, 1.0f);
+        textRenderer.draw("Earth-Satellite Coordinate Transformation (地球-卫星坐标变换)", 20, y);
+        y -= lineHeight * 1.5;
+        
+        textRenderer.setColor(0.2f, 0.4f, 0.9f, 1.0f);
+        textRenderer.draw("Earth (地球) - O₁ Earth-Centered Inertial Frame (地心惯性坐标系)", 20, y);
+        y -= lineHeight;
+        
+        textRenderer.setColor(0.8f, 0.8f, 0.9f, 1.0f);
+        textRenderer.draw("Satellite (卫星) - O₂ Body-Fixed Frame (本体坐标系)", 20, y);
+        y -= lineHeight * 1.5;
+        
+        textRenderer.setColor(1f, 1f, 1f, 1.0f);
+        textRenderer.draw(String.format("Satellite Position: (%.2f, %.2f, %.2f) km", 
+            o2TranslationX, o2TranslationY, o2TranslationZ), 20, y);
+        y -= lineHeight;
+        
+        textRenderer.setColor(1f, 1f, 1f, 1.0f);
+        textRenderer.draw(String.format("Satellite Attitude (Yaw): %.1f°", o2RotationAngle), 20, y);
+        y -= lineHeight;
+        
+        textRenderer.setColor(1f, 1f, 1f, 1.0f);
+        textRenderer.draw(String.format("Orbital Radius: %.2f km", ORBIT_RADIUS), 20, y);
+        y -= lineHeight * 1.5;
+        
+        textRenderer.setColor(1.0f, 0.0f, 1.0f, 1.0f);
+        textRenderer.draw(String.format("Point in O₂ frame: P₂ = (%.2f, %.2f, %.2f)", 
+            testPointX, testPointY, testPointZ), 20, y);
+        y -= lineHeight;
+        
+        textRenderer.setColor(0.8f, 0.0f, 0.8f, 1.0f);
+        textRenderer.draw(String.format("Point in O₁ frame: P₁ = (%.2f, %.2f, %.2f)", 
+            worldCoords[0], worldCoords[1], worldCoords[2]), 20, y);
+        y -= lineHeight * 1.5;
+        
+        textRenderer.setColor(0.3f, 0.3f, 1f, 1.0f);
+        textRenderer.draw("Transformation: P₁ = R(θ) * P₂ + T", 20, y);
+        y -= lineHeight * 2;
+        
+        textRenderer.setColor(0.4f, 0.4f, 0.4f, 1.0f);
+        textRenderer.draw("Controls: Mouse drag (rotate) | Wheel (zoom) | SPACE (pause) | R (reset) | G (grid) | T (trajectory)", 
+            20, 30);
+        
+        textRenderer.endRendering();
+        
+        gl.glEnable(GL2.GL_DEPTH_TEST);
+        
+        // Restore matrices
+        gl.glPopMatrix();
+        gl.glMatrixMode(GL2.GL_PROJECTION);
+        gl.glPopMatrix();
+        gl.glMatrixMode(GL2.GL_MODELVIEW);
     }
 
     @Override
@@ -172,74 +556,8 @@ public class Chapter1 implements GLEventListener {
         float aspect = (height == 0) ? 1.0f : (float) width / (float) height;
         gl.glMatrixMode(GL2.GL_PROJECTION);
         gl.glLoadIdentity();
-        glu.gluPerspective(60.0f, aspect, 0.1f, 1000.0f);
+        glu.gluPerspective(45.0f, aspect, 0.1f, 1000.0f);
         gl.glMatrixMode(GL2.GL_MODELVIEW);
-    }
-
-    private void setMaterial(GL2 gl, float[] rgba) {
-        float[] ambient = {rgba[0] * 0.2f, rgba[1] * 0.2f, rgba[2] * 0.2f, 1.0f};
-        float[] diffuse = {rgba[0], rgba[1], rgba[2], 1.0f};
-        float[] specular = {0.9f, 0.9f, 0.9f, 1.0f};
-        float shininess = 32.0f;
-        gl.glMaterialfv(GL2.GL_FRONT_AND_BACK, GL2.GL_AMBIENT, ambient, 0);
-        gl.glMaterialfv(GL2.GL_FRONT_AND_BACK, GL2.GL_DIFFUSE, diffuse, 0);
-        gl.glMaterialfv(GL2.GL_FRONT_AND_BACK, GL2.GL_SPECULAR, specular, 0);
-        gl.glMaterialf(GL2.GL_FRONT_AND_BACK, GL2.GL_SHININESS, shininess);
-    }
-
-    private void drawOrbitRing(GL2 gl, float radius) {
-        gl.glDisable(GL2.GL_LIGHTING);
-        gl.glColor3f(1.0f, 0.4f, 0.5f);
-        gl.glBegin(GL2.GL_LINE_LOOP);
-        int segments = 128;
-        for (int i = 0; i < segments; i++) {
-            double ang = (2.0 * Math.PI * i) / segments;
-            float x = (float) (radius * Math.cos(ang));
-            float z = (float) (radius * Math.sin(ang));
-            gl.glVertex3f(x, 0.0f, z);
-        }
-        gl.glEnd();
-        gl.glEnable(GL2.GL_LIGHTING);
-    }
-
-    private void loadTextures(GL2 gl) {
-        earthTexture = tryLoadTextureFromResources(gl, "/textures/earth.jpg");
-        System.out.println("earthTexture: " + earthTexture);
-
-        if (earthTexture == null) {
-            earthTexture = createProceduralEarthTexture(gl);
-        }
-    }
-
-    private Texture tryLoadTextureFromResources(GL2 gl, String resourcePath) {
-        try (InputStream in = getClass().getResourceAsStream(resourcePath)) {
-            if (in == null) return null;
-            String lower = resourcePath.toLowerCase();
-            String ext = lower.endsWith(".png") ? "png" : lower.endsWith(".jpg") || lower.endsWith(".jpeg") ? "jpg" : null;
-            if (ext == null) return null;
-            return TextureIO.newTexture(in, true, ext);
-        } catch (IOException e) {
-            return null;
-        }
-    }
-
-    private Texture createProceduralEarthTexture(GL2 gl) {
-        int width = 512;
-        int height = 256;
-        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = img.createGraphics();
-        g.setColor(new java.awt.Color(15, 40, 120));
-        g.fillRect(0, 0, width, height);
-        g.setColor(new java.awt.Color(20, 140, 60));
-        for (int i = 0; i < 12; i++) {
-            int w = 30 + (i * 7) % 90;
-            int h = 15 + (i * 5) % 60;
-            int x = (int) ((i * 41.3) % (width - w));
-            int y = (int) ((i * 23.7) % (height - h));
-            g.fillOval(x, y, w, h);
-        }
-        g.dispose();
-        return AWTTextureIO.newTexture(gl.getGLProfile(), img, true);
     }
 
     private void attachInputHandlers(GLCanvas canvas) {
@@ -247,18 +565,27 @@ public class Chapter1 implements GLEventListener {
             @Override
             public void keyPressed(KeyEvent e) {
                 switch (e.getKeyCode()) {
-                    case KeyEvent.VK_LEFT -> rotationYDeg -= 3.0f;
-                    case KeyEvent.VK_RIGHT -> rotationYDeg += 3.0f;
-                    case KeyEvent.VK_UP -> rotationXDeg -= 3.0f;
-                    case KeyEvent.VK_DOWN -> rotationXDeg += 3.0f;
-                    case KeyEvent.VK_EQUALS, KeyEvent.VK_PLUS -> cameraZoom += 1.0f; // zoom in
-                    case KeyEvent.VK_MINUS -> cameraZoom -= 1.0f; // zoom out
-                    case KeyEvent.VK_R -> {
-                        rotationXDeg = 20.0f;
-                        rotationYDeg = -30.0f;
-                        cameraZoom = -20.0f;
+                    case KeyEvent.VK_SPACE -> {
+                        animationEnabled = !animationEnabled;
+                        if (animationEnabled) {
+                            lastTime = System.nanoTime();
+                        }
                     }
-                    default -> { }
+                    case KeyEvent.VK_R -> {
+                        cameraRotX = 25.0f;
+                        cameraRotY = -35.0f;
+                        cameraZoom = -30.0f;
+                        animationEnabled = true;
+                        lastTime = System.nanoTime();
+                    }
+                    case KeyEvent.VK_G -> showGrid = !showGrid;
+                    case KeyEvent.VK_T -> showTrajectory = !showTrajectory;
+                    case KeyEvent.VK_LEFT -> cameraRotY -= 5.0f;
+                    case KeyEvent.VK_RIGHT -> cameraRotY += 5.0f;
+                    case KeyEvent.VK_UP -> cameraRotX -= 5.0f;
+                    case KeyEvent.VK_DOWN -> cameraRotX += 5.0f;
+                    case KeyEvent.VK_EQUALS, KeyEvent.VK_PLUS -> cameraZoom += 2.0f;
+                    case KeyEvent.VK_MINUS -> cameraZoom -= 2.0f;
                 }
                 canvas.display();
             }
@@ -284,8 +611,8 @@ public class Chapter1 implements GLEventListener {
                 if (!isDragging) return;
                 int dx = e.getX() - lastMouseX;
                 int dy = e.getY() - lastMouseY;
-                rotationYDeg += dx * 0.4f;
-                rotationXDeg += dy * 0.4f;
+                cameraRotY += dx * 0.5f;
+                cameraRotX += dy * 0.5f;
                 lastMouseX = e.getX();
                 lastMouseY = e.getY();
                 canvas.display();
@@ -293,7 +620,7 @@ public class Chapter1 implements GLEventListener {
         });
 
         canvas.addMouseWheelListener((MouseWheelEvent e) -> {
-            cameraZoom += e.getWheelRotation() * 1.0f;
+            cameraZoom += e.getWheelRotation() * 2.0f;
             canvas.display();
         });
     }
@@ -302,15 +629,17 @@ public class Chapter1 implements GLEventListener {
         GLProfile profile = GLProfile.get(GLProfile.GL2);
         GLCapabilities capabilities = new GLCapabilities(profile);
         capabilities.setDepthBits(24);
+        capabilities.setSampleBuffers(true);
+        capabilities.setNumSamples(4);
 
         GLCanvas canvas = new GLCanvas(capabilities);
-        Chapter1 renderer = new Chapter1();
-        canvas.addGLEventListener(renderer);
-        renderer.attachInputHandlers(canvas);
+        Chapter1 demo = new Chapter1();
+        canvas.addGLEventListener(demo);
+        demo.attachInputHandlers(canvas);
 
-        Frame frame = new Frame("JOGL Earth–Moon Orbit");
+        Frame frame = new Frame("Coordinate System Transformation - O₁ ↔ O₂");
         frame.add(canvas);
-        frame.setSize(1000, 700);
+        frame.setSize(1200, 800);
         frame.setLocationRelativeTo(null);
 
         final FPSAnimator animator = new FPSAnimator(canvas, 60, true);
